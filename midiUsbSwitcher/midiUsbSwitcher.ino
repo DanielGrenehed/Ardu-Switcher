@@ -1,111 +1,151 @@
 
 #include "MIDIUSB.h"
+#include "midiMessage.h"
 
-#define b1 1
-#define b2 2
-#define b3 3
-#define b4 4
-#define b5 5
-#define b6 5
+#define DEBUG
+
+#define switch_1 1
+#define switch_2 2
+#define switch_3 3
+#define switch_4 4
+#define switch_5 5
+#define switch_6 5
 #define isNEx 7
 
 #define ExP A0
 
-int lb1 = 0;
-int lb2 = 0;
-int lb3 = 0;
-int lb4 = 0;
-int lb5 = 0;
-int lb6 = 0;
+int lastSwitchState_1 = 0; // last switch state for switch 1
+int lastSwitchState_2 = 0;
+int lastSwitchState_3 = 0;
+int lastSwitchState_4 = 0;
+int lastSwitchState_5 = 0;
+int lastSwitchState_6 = 0;
 
-int sVal = 0;
-int lVal = 0;
-int tempA = 0;
+int pedalValue = 0;
+int lastPedalValue = 0;
+int tempAnalogValue = 0;
+int largestPedalValue = 0;
 
 
 // the setup routine runs once when you press reset:
 void setup() {
-  // initialize serial communication at 9600 bits per second:
+
   Serial.begin(9600);
-  // make the pushbutton's pin an input:
-  pinMode(b1, INPUT_PULLUP);
-  pinMode(b2, INPUT_PULLUP);
-  pinMode(b3, INPUT_PULLUP);
-  pinMode(b4, INPUT_PULLUP);
-  pinMode(b5, INPUT_PULLUP);
-  pinMode(b6, INPUT_PULLUP);
+
+  // setup switches as inputs
+  pinMode(switch_1, INPUT_PULLUP);
+  pinMode(switch_2, INPUT_PULLUP);
+  pinMode(switch_3, INPUT_PULLUP);
+  pinMode(switch_4, INPUT_PULLUP);
+  pinMode(switch_5, INPUT_PULLUP);
+  pinMode(switch_6, INPUT_PULLUP);
+
+  // expression on/off switch
   pinMode(isNEx, INPUT_PULLUP);
-  //pinMode(led, OUTPUT);
+
 }
 
-// the loop routine runs over and over again forever:
-void loop() {
-  // read the input pin:
-  // print out the state of the button:
 
-  int tps = digitalRead(b1);
-  if (tps != lb1) {
-    Serial.println("Switch 1 tapped");
-    controlChange(1, 3, 1);
-    MidiUSB.flush();
-    lb1 = tps;
-  }
-  tps = digitalRead(b2);
-  if (tps != lb2) {
-    Serial.println("Switch 2 tapped");
-    controlChange(1, 9, 1);
-    MidiUSB.flush();
-    lb2 = tps;
-  }
-  tps = digitalRead(b3);
-  if (tps != lb3) {
-    Serial.println("Switch 3 tapped");
-    controlChange(1, 3, tps);
-    MidiUSB.flush();
-    lb3 = tps;
-  }
-  tps = digitalRead(b4);
-  if (tps != lb4) {
-    Serial.println("Switch 4 tapped");
-    controlChange(1, 9, tps);
-    MidiUSB.flush();
-    lb4 = tps;
-  }
-  
+void loop() {
+
+  MidiMessage msg = {0, 1, 3, 1};
+  int tps = digitalRead(switch_1);
+
+  handleSwitch(switch_1, tps, lastSwitchState_1, msg);
+
+  tps = digitalRead(switch_2);
+  msg.Data_1 = 9;
+  handleSwitch(switch_2, tps, lastSwitchState_2, msg);
+
+  tps = digitalRead(switch_3);
+  msg.Data_1 = 3;
+  msg.Data_2 = tps;
+  handleSwitch(switch_3, tps, lastSwitchState_3, msg);
+
+  tps = digitalRead(switch_4);
+  msg.Data_2 = tps;
+  handleSwitch(switch_4, tps, lastSwitchState_4, msg);
+
   tps = digitalRead(isNEx);
-  //4Serial.println(tps);
+
 
   if (tps == 0) {
-    sVal = 0;
-    tempA = analogRead(ExP);
-    Serial.println(tempA);
-    tempA = map(tempA, 0, 1023, 0, 127);
-    tempA = constrain(tempA, 0, 127);
-    if (tempA != lVal) {
-      controlChange(1, 11, tempA);
-      MidiUSB.flush();
-      lVal = tempA;
-    }
+    handlePedal();
   } else {
-    tps = digitalRead(b5);
-    if (tps != lb5) {
-      Serial.println("Switch 5 tapped");
-      controlChange(1, 14, tps);
-      MidiUSB.flush();
-      lb5 = tps;
+    tps = digitalRead(switch_5);
+    msg.Data_1 = 14;
+    msg.Data_2 = tps;
+    handleSwitch(switch_5, tps, lastSwitchState_5, msg);
+
+    tps = digitalRead(switch_6);
+    msg.Data_1 = 15;
+    msg.Data_2 = tps;
+    handleSwitch(switch_6, tps, lastSwitchState_6, msg);
   }
-    tps = digitalRead(b6);
-    if (tps != lb6) {
-      Serial.println("Switch 6 tapped");
-      controlChange(1, 15, tps);
-      MidiUSB.flush();
-      lb6 = tps;
-  }
-  }
-  
-  
-  
+
   delay(2);
+}
+
+/*
+
+
+  Todo: Generalize function!
+*/
+bool handlePedal() {
+  pedalValue = 0;
+  tempAnalogValue = analogRead(ExP);
+
+  if (tempAnalogValue > largestPedalValue) {
+    largestPedalValue = tempAnalogValue;
+  }
+
+  #ifdef DEBUG
+  Serial.println(tempAnalogValue);
+  #endif
+
+  tempAnalogValue = constrain(tempAnalogValue, 0, largestPedalValue);
+  tempAnalogValue = map(tempAnalogValue, 0, largestPedalValue, 0, 127);
+  //tempAnalogValue = map(tempAnalogValue, 0, 1023, 0, 127);
+  //tempAnalogValue = constrain(tempAnalogValue, 0, 127);
+
+  if (tempAnalogValue != lastPedalValue) {
+    controlChange(1, 11, tempAnalogValue);
+    MidiUSB.flush();
+    lastPedalValue = tempAnalogValue;
+  }
+
+}
+
+
+
+/*
+
+
+  Todo: fix switchnr
+*/
+bool handleSwitch(int switchnr, int state, int &lastState, MidiMessage msg) {
+  if (state != lastState) {
+
+    switch (msg.Type) {
+      case (0):
+      controlChange(msg.Channel, msg.Data_1, msg.Data_2);
+      break;
+
+      case (1):
+      noteOn(msg.Channel, msg.Data_1, msg.Data_2);
+      break;
+
+      case (2):
+      noteOff(msg.Channel, msg.Data_1, msg.Data_2);
+      break;
+    }
+
+    MidiUSB.flush();
+
+    lastState = state;
+    return true;
+  }
+  return false;
 }
 
 // First parameter is the event type (0x0B = control change).
@@ -116,4 +156,14 @@ void loop() {
 void controlChange(byte channel, byte control, byte value) {
   midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
   MidiUSB.sendMIDI(event);
+}
+
+void noteOn(byte channel, byte pitch, byte velocity) {
+  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
+  MidiUSB.sendMIDI(noteOn);
+}
+
+void noteOff(byte channel, byte pitch, byte velocity) {
+  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
+  MidiUSB.sendMIDI(noteOff);
 }
