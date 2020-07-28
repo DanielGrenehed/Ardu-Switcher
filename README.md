@@ -30,3 +30,6 @@ The TRS jacks are used to plug in external switches, allowing up to 6 footswitch
 
 ## Building a switch-box
 A connected switch-box would be built by simply connecting ground(sleeve) to the input of the two footswitches and the other (ring and tip) to the output of the footswitches(Could be any switch connecting/disconnecting two pins).
+
+## What external switches and pedals can i use?
+I have tested this with a 2 switch enclosure(the one i used was made by Vox and had momentary switches) and a Roland DP-10 sustain pedal(Sleeve -> ground, ring -> analog-in, tip -> 5v).

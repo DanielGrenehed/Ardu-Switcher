@@ -5,6 +5,19 @@
 #define DEBUG
 
 /*
+
+  Todo: move midi message creation to when it should be sent, to not have a kind of
+  prototype message floating around the whole loop
+
+  Move midi implementations to midiMessage.h or some other file
+
+  Move all switch handling to the handleSwitch function, removing the need to pass
+  midi message, digital read value and switch state. Then maby subdevide that function into
+  smaller functions
+
+*/
+
+/*
 #define switch_1 1
 #define switch_2 2
 #define switch_3 3
@@ -28,8 +41,8 @@ int lastSwitchState_5 = 0;
 int lastSwitchState_6 = 0;*/
 int switchStates[num_switches]; // store last read value of pins
 
-int lastPedalValue = 0;
-int largestPedalValue = 0;
+int lastPedalValue = 0; // have the value changed
+int largestPedalValue = 0; // max value for expression pedal, used to map to a 0->127 value
 
 //int pedalValue = 0;
 //int tempAnalogValue = 0;
@@ -85,18 +98,18 @@ void loop() {
 
   */
 
-  MidiMessage msg = {0, 1, 3, 1};
+  MidiMessage msg = {0, 1, 3, 1}; // {midi_message_type, midi_channel, data_1, data_2 }
   int temp_switch_value = digitalRead(switches[0]);
 
   handleSwitch(switches[0], temp_switch_value, switchStates[0], msg);
 
   temp_switch_value = digitalRead(switches[1];
-  msg.Data_1 = 9;
+  msg.Data_1 = 9; // what is 9?
   handleSwitch(switches[1], temp_switch_value, switchStates[1], msg);
 
   temp_switch_value = digitalRead(switches[2]);
-  msg.Data_1 = 3;
-  msg.Data_2 = temp_switch_value;
+  msg.Data_1 = 3; // what is 3?
+  msg.Data_2 = temp_switch_value; // what is temp_switch_value? 0 or 1, 0 -> 127?
   handleSwitch(switches[2], temp_switch_value, switchStates[2], msg);
 
   temp_switch_value = digitalRead(switches[3]);
@@ -110,7 +123,7 @@ void loop() {
   */
 
 
-  if (temp_switch_value == 0) {
+  if (temp_switch_value == 0) { // make more explicit code and clearer variable names, temp_switch_value is overused
     handlePedal();
   } else {
     temp_switch_value = digitalRead(switches[4]);
@@ -168,7 +181,7 @@ bool handleSwitch(int switchnr, int state, int &lastState, MidiMessage msg) {
   if (state != lastState) {
 
     switch (msg.Type) { // see midiMessage.h for types
-      case (0):
+      case (0): // when using enums, maby try to use the acual enum value name, should make things easier to read
       controlChange(msg.Channel, msg.Data_1, msg.Data_2);
       break;
 
@@ -179,12 +192,12 @@ bool handleSwitch(int switchnr, int state, int &lastState, MidiMessage msg) {
       case (2):
       noteOff(msg.Channel, msg.Data_1, msg.Data_2);
       break;
-    }
+    } // no deault, always have a default if it would error
 
-    MidiUSB.flush();
+    MidiUSB.flush(); // This should not be a responsibillity of this function
 
     lastState = state;
-    return true;
+    return true; // return value is never used, skip returning and make it a void function maybe, the name suggest no return
   }
   return false;
 }
@@ -194,6 +207,8 @@ bool handleSwitch(int switchnr, int state, int &lastState, MidiMessage msg) {
 // Third parameter is the control number number (0-119).
 // Fourth parameter is the control value (0-127).
 
+
+// move to midiMessage.h and generalize, its pretty much the same functions anyway, and add flush as a responsibility of this function
 void controlChange(byte channel, byte control, byte value) {
   midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
   MidiUSB.sendMIDI(event);
