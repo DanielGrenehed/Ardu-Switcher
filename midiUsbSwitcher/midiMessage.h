@@ -55,7 +55,7 @@ void sendMidi(MidiMessage msg) {
 */
 midiEventPacket_t createMidiPacket(MidiMessage msg) {
   midiEventPacket_t packet = {typeBytes[msg.Type], channelBytes[msg.Type] | msg.Channel, msg.Data_1, msg.Data_2};
-  return packet
+  return packet;
 }
 
 /*

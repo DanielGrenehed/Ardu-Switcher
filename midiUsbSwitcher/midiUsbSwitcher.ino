@@ -48,9 +48,7 @@ void setSwitchInputs() {
 
 */
 void loop() {
-
   for (int i = 0; i < num_switches; i++) {
-
     handleSwitch(i);
 
     if (i == num_switches -3 && digitalRead(isNEx) == 0) {
@@ -86,7 +84,7 @@ int mapPedalToByte(int value) {
   if (value > largestPedalValue) largestPedalValue = value; // set record high value to constrain
   value = constrain(value, 0, largestPedalValue); // constrain to highest value recorded
   value = map(value, 0, largestPedalValue, 0, 127);// map to byte
-  return value
+  return value;
 }
 
 /*
