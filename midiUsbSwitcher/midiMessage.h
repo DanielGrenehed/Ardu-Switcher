@@ -1,11 +1,25 @@
 
 #ifndef MIDIMESSAGE_H
 #define MIDIMESSAGE_H
-#include "Arduino.h"
+#include "Arduino.h" // to use in arduino programs
+#include "MIDIUSB.h"
 
 enum MidiMessageType {
   Control = 0, NoteOn = 1, NoteOff = 2
 };
+
+int validMidiMessageType(int msgType) {
+  int valid = 0;
+
+  switch(msgType) {
+    case MidiMessageType.Control:
+    case MidiMessageType.NoteOn:
+    case MidiMessageType.NoteOff:
+      valid = 1;
+  };
+
+  return valid;
+}
 
 struct MidiMessage {
   MidiMessageType Type;
@@ -13,5 +27,22 @@ struct MidiMessage {
   byte Data_1;
   byte Data_2;
 };
+
+byte typeBytes[] = {0xB0, 0x90, 0x80};
+byte channelBytes[] = {0x0B, 0x09, 0x08};
+
+void sendMidi(MidiMessage msg) {
+  sendMidiUsb(createMidiPacket(msg))
+}
+
+midiEventPacket_t createMidiPacket(MidiMessage msg) {
+  midiEventPacket_t packet = {typeBytes[msg.Type], channelBytes[msg.Type] | msg.Channel, msg.Data_1, msg.Data_2};
+  return packet
+}
+
+void sendMidiUsb(midiEventPacket_t packet) {
+  MidiUSB.sendMIDI(packet);
+  MidiUSB.flush();
+}
 
 #endif // MIDIMESSAGE_H

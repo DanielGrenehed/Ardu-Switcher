@@ -1,5 +1,5 @@
 
-#include "MIDIUSB.h"
+//#include "MIDIUSB.h"
 #include "midiMessage.h"
 
 #define DEBUG
@@ -9,7 +9,7 @@
   Todo: move midi message creation to when it should be sent, to not have a kind of
   prototype message floating around the whole loop
 
-  Move midi implementations to midiMessage.h or some other file
+
 
   Move all switch handling to the handleSwitch function, removing the need to pass
   midi message, digital read value and switch state. Then maby subdevide that function into
@@ -17,36 +17,17 @@
 
 */
 
-/*
-#define switch_1 1
-#define switch_2 2
-#define switch_3 3
-#define switch_4 4
-#define switch_5 5
-#define switch_6 5*/
+
 #define num_switches 6
-
-int switches[num_switches] = {1, 2, 3, 4, 5, 5} // switch pins, two per tele-jack
-
+#define ExP A0 // expression pedal on analog 0
 #define isNEx 7 // on/off switch pin
 
-#define ExP A0 // expression pedal on analog 0
+int switches[num_switches] = {1, 2, 3, 4, 5, 6} // switch pins, two per tele-jack
 
-/*
-int lastSwitchState_1 = 0; // last switch state for switch 1
-int lastSwitchState_2 = 0;
-int lastSwitchState_3 = 0;
-int lastSwitchState_4 = 0;
-int lastSwitchState_5 = 0;
-int lastSwitchState_6 = 0;*/
 int switchStates[num_switches]; // store last read value of pins
 
 int lastPedalValue = 0; // have the value changed
 int largestPedalValue = 0; // max value for expression pedal, used to map to a 0->127 value
-
-//int pedalValue = 0;
-//int tempAnalogValue = 0;
-
 
 
 // the setup routine runs once when you press reset:
@@ -54,15 +35,7 @@ void setup() {
 
   Serial.begin(9600);
 
-  // setup switches as inputs
-  /*
-  pinMode(switch_1, INPUT_PULLUP);
-  pinMode(switch_2, INPUT_PULLUP);
-  pinMode(switch_3, INPUT_PULLUP);
-  pinMode(switch_4, INPUT_PULLUP);
-  pinMode(switch_5, INPUT_PULLUP);
-  pinMode(switch_6, INPUT_PULLUP);
-  */
+
   resetSwitchStates();
   setSwitchInputs();
 
@@ -146,80 +119,34 @@ void loop() {
   Todo: Generalize function!
 */
 bool handlePedal() {
-  //pedalValue = 0;
-  int tempAnalogValue = analogRead(ExP);
-
-  if (tempAnalogValue > largestPedalValue) {
-    largestPedalValue = tempAnalogValue;
-  }
+  int value = mapPedalToByte(analogRead(ExP));
 
   #ifdef DEBUG
-  Serial.println(tempAnalogValue);
+  Serial.println(value);
   #endif
 
-  tempAnalogValue = constrain(tempAnalogValue, 0, largestPedalValue);
-  tempAnalogValue = map(tempAnalogValue, 0, largestPedalValue, 0, 127);
-  //tempAnalogValue = map(tempAnalogValue, 0, 1023, 0, 127);
-  //tempAnalogValue = constrain(tempAnalogValue, 0, 127);
-
-  if (tempAnalogValue != lastPedalValue) {
-    controlChange(1, 11, tempAnalogValue);
-    MidiUSB.flush();
-    lastPedalValue = tempAnalogValue;
+  if (value != lastPedalValue) {
+    sendMidi({0, 1, 11, value}); // send control change
+    lastPedalValue = value;
   }
-
 }
 
-
+int mapPedalToByte(int value) {
+  if (value > largestPedalValue) largestPedalValue = value; // set record high value to constrain
+  value = constrain(value, 0, largestPedalValue); // constrain to highest value recorded
+  value = map(value, 0, largestPedalValue, 0, 127);// map to byte
+}
 
 /*
 
 
-  Todo: fix switchnr
 */
 bool handleSwitch(int switchnr, int state, int &lastState, MidiMessage msg) {
   if (state != lastState) {
-
-    switch (msg.Type) { // see midiMessage.h for types
-      case (0): // when using enums, maby try to use the acual enum value name, should make things easier to read
-      controlChange(msg.Channel, msg.Data_1, msg.Data_2);
-      break;
-
-      case (1):
-      noteOn(msg.Channel, msg.Data_1, msg.Data_2);
-      break;
-
-      case (2):
-      noteOff(msg.Channel, msg.Data_1, msg.Data_2);
-      break;
-    } // no deault, always have a default if it would error
-
-    MidiUSB.flush(); // This should not be a responsibillity of this function
+    if (validMidiMessageType(msg.Type)) {
+      sendMidi(msg);
+    }
 
     lastState = state;
-    return true; // return value is never used, skip returning and make it a void function maybe, the name suggest no return
   }
-  return false;
-}
-
-// First parameter is the event type (0x0B = control change).
-// Second parameter is the event type, combined with the channel.
-// Third parameter is the control number number (0-119).
-// Fourth parameter is the control value (0-127).
-
-
-// move to midiMessage.h and generalize, its pretty much the same functions anyway, and add flush as a responsibility of this function
-void controlChange(byte channel, byte control, byte value) {
-  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
-  MidiUSB.sendMIDI(event);
-}
-
-void noteOn(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
-  MidiUSB.sendMIDI(noteOn);
-}
-
-void noteOff(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
-  MidiUSB.sendMIDI(noteOff);
 }
