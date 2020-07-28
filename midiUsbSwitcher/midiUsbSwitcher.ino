@@ -4,10 +4,6 @@
 
 #define DEBUG
 
-/*
-
-*/
-
 #define num_switches 6
 #define ExP A0 // expression pedal on analog 0
 #define isNEx 7 // on/off switch pin
@@ -17,48 +13,34 @@ int switches[num_switches] = {1, 2, 3, 4, 5, 6}; // switch pins, two per tele-ja
 int switchStates[num_switches]; // store last read value of pins
 
 /*
-
   Mapping switches to midi messages
-
 */
-int defaultTypes[] = {0, 0, 0, 0, 0, 0}; // default midi message types
 #define m_ch 1 // default midi channel
-int defaultNotes[] = {3, 9, 3, 3, 14, 15}; // defaults for data_1
-int defaultValues[] = {1, 1, -1, -1, -1, -1}; // defaults for data_2
-/*
-  If value is negative, use an variable, in this case what digitalRead gave
-*/
+int default_types[] = {0, 0, 0, 0, 0, 0}; // default midi message types
+int default_data1[] = {3, 9, 3, 3, 14, 15}; // notes or cc message
+int default_data2[] = {1, 1, -1, -1, -1, -1}; // if negative, use digitalRead value
+
 
 int lastPedalValue = 0; // have the value changed
 int largestPedalValue = 0; // max value for expression pedal, used to map to a 0->127 value
 
-
 /**/
 void setup() {
-
   Serial.begin(9600);
-
-
   resetSwitchStates();
+
   setSwitchInputs();
-
-  // expression on/off switch
-  pinMode(isNEx, INPUT_PULLUP);
-
+  pinMode(isNEx, INPUT_PULLUP); // expression on/off switch
 }
 
 /**/
 void resetSwitchStates() {
-  for (int i = 0; i < num_switches; i++) {
-    switchStates[i] = 0;
-  }
+  for (int i = 0; i < num_switches; i++) switchStates[i] = 0;
 }
 
 /**/
 void setSwitchInputs() {
-  for (int i = 0; i < num_switches; i++) {
-    pinMode(switches[i], INPUT_PULLUP);
-  }
+  for (int i = 0; i < num_switches; i++) pinMode(switches[i], INPUT_PULLUP);
 }
 
 
@@ -104,6 +86,7 @@ int mapPedalToByte(int value) {
   if (value > largestPedalValue) largestPedalValue = value; // set record high value to constrain
   value = constrain(value, 0, largestPedalValue); // constrain to highest value recorded
   value = map(value, 0, largestPedalValue, 0, 127);// map to byte
+  return value
 }
 
 /*
